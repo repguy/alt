@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useListAudits } from "@workspace/api-client-react";
 import { format } from "date-fns";
-import { Plus, Search, ExternalLink, RefreshCw, AlertCircle } from "lucide-react";
+import { Plus, Search, ExternalLink, RefreshCw, AlertCircle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NewAuditDialog } from "@/components/dialogs/new-audit-dialog";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
 
 export default function AuditsList() {
   const [search, setSearch] = useState("");
+  const [newAuditOpen, setNewAuditOpen] = useState(false);
   const { data: audits, isLoading } = useListAudits();
 
   const filteredAudits = audits?.filter(
@@ -50,12 +52,13 @@ export default function AuditsList() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+      <NewAuditDialog open={newAuditOpen} onOpenChange={setNewAuditOpen} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Website Audits</h1>
           <p className="text-muted-foreground mt-1">Run AI-powered analysis on prospect websites.</p>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={() => setNewAuditOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" /> New Audit
         </Button>
       </div>

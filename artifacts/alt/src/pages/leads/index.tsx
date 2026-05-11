@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useListLeads } from "@workspace/api-client-react";
 import { format } from "date-fns";
-import { Plus, Search, ExternalLink, Filter, MapPin, Mail, Phone, Tag } from "lucide-react";
+import { Plus, Search, ExternalLink, Filter, MapPin, Mail, Phone, Tag, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddLeadDialog } from "@/components/dialogs/add-lead-dialog";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
 
 export default function LeadsList() {
   const [search, setSearch] = useState("");
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
   const { data: leads, isLoading } = useListLeads();
 
   const filteredLeads = leads?.filter(
@@ -41,6 +43,7 @@ export default function LeadsList() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+      <AddLeadDialog open={addLeadOpen} onOpenChange={setAddLeadOpen} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Leads Pipeline</h1>
@@ -52,7 +55,7 @@ export default function LeadsList() {
               <Search className="mr-2 h-4 w-4" /> AI Lead Finder
             </Button>
           </Link>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button onClick={() => setAddLeadOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Plus className="mr-2 h-4 w-4" /> Add Lead
           </Button>
         </div>

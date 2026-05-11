@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreateProposalDialog } from "@/components/dialogs/create-proposal-dialog";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
 
 export default function ProposalsList() {
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const { data: proposals, isLoading } = useListProposals();
 
   const filteredProposals = proposals?.filter(
@@ -42,12 +44,13 @@ export default function ProposalsList() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+      <CreateProposalDialog open={createOpen} onOpenChange={setCreateOpen} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Proposals</h1>
           <p className="text-muted-foreground mt-1">Create and track service proposals for clients.</p>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={() => setCreateOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" /> Create Proposal
         </Button>
       </div>

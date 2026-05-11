@@ -196,7 +196,7 @@ export default function AuditDetail() {
             <CardContent className="p-6 md:p-8">
               <div className="prose prose-invert max-w-none">
                 {audit.aiSummary ? (
-                  <div dangerouslySetContent={{ __html: audit.aiSummary }} /> // Simple render, assumes safe HTML or plain text
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{audit.aiSummary}</p>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
                     <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">

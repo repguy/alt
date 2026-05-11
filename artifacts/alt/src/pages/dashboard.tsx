@@ -9,6 +9,7 @@ import {
   BarChart3,
   Clock
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,12 @@ import { Progress } from "@/components/ui/progress";
 import { useGetDashboardAnalytics } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { motion } from "framer-motion";
+import { NewAuditDialog } from "@/components/dialogs/new-audit-dialog";
 
 export default function Dashboard() {
   const { data: analytics, isLoading } = useGetDashboardAnalytics();
+  const [newAuditOpen, setNewAuditOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -26,7 +30,14 @@ export default function Dashboard() {
         <Skeleton className="h-10 w-64 mb-8" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: i * 0.1 }}
+            >
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </motion.div>
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
@@ -82,6 +93,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
+      <NewAuditDialog open={newAuditOpen} onOpenChange={setNewAuditOpen} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
@@ -91,33 +103,38 @@ export default function Dashboard() {
           <Link href="/leads/find">
             <Button variant="outline" className="border-border">Find Leads</Button>
           </Link>
-          <Link href="/audits">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              New Audit <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+          <Button onClick={() => setNewAuditOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            New Audit <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, i) => (
-          <Card key={i} className="bg-card/50 backdrop-blur-sm border-white/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <div className="p-2 bg-white/5 rounded-md">
-                <stat.icon className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <p className={`text-xs mt-1 ${stat.trend === 'up' ? 'text-emerald-400' : 'text-muted-foreground'}`}>
-                {stat.change}
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.1 }}
+          >
+            <Card className="bg-card/50 backdrop-blur-sm border-white/5 h-full">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.title}
+                </CardTitle>
+                <div className="p-2 bg-white/5 rounded-md">
+                  <stat.icon className="h-4 w-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{stat.value}</div>
+                <p className={`text-xs mt-1 ${stat.trend === 'up' ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                  {stat.change}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
 

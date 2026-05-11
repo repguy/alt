@@ -122,6 +122,8 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+import OnboardingPage from "@/pages/onboarding";
+
 function HomeRedirect() {
   return (
     <>
@@ -136,11 +138,22 @@ function HomeRedirect() {
 }
 
 function AppShellRoutes() {
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    const onboardingDone = localStorage.getItem("onboarding_done");
+    if (!onboardingDone && location !== "/onboarding") {
+      setLocation("/onboarding", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — location is read at call time, not as dep
+
   return (
     <>
       <Show when="signed-in">
         <AppLayout>
           <Switch>
+            <Route path="/onboarding" component={OnboardingPage} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/audits" component={AuditsList} />
             <Route path="/audits/:id" component={AuditDetail} />
