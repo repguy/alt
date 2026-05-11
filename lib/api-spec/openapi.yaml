@@ -3,20 +3,42 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ALT Agency Automation Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User management
+  - name: workspaces
+    description: Workspace/organization management
+  - name: audits
+    description: Website audit engine
+  - name: leads
+    description: Lead generation and management
+  - name: proposals
+    description: Proposal generation and management
+  - name: clients
+    description: Client management and CRM
+  - name: campaigns
+    description: Outreach campaign management
+  - name: analytics
+    description: Analytics and reporting
+  - name: whitelabel
+    description: White-label configuration
+  - name: blog
+    description: Blog content management
+  - name: billing
+    description: Subscription and billing
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +46,2176 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Users ──────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getCurrentUser
+      tags: [users]
+      summary: Get current authenticated user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateCurrentUser
+      tags: [users]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/onboarding:
+    post:
+      operationId: completeOnboarding
+      tags: [users]
+      summary: Complete user onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingInput"
+      responses:
+        "200":
+          description: Onboarding completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # ── Workspaces ─────────────────────────────────────────────────────────────
+  /workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspaces]
+      summary: List all workspaces for current user
+      responses:
+        "200":
+          description: List of workspaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Workspace"
+    post:
+      operationId: createWorkspace
+      tags: [workspaces]
+      summary: Create a new workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceInput"
+      responses:
+        "201":
+          description: Created workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+
+  /workspaces/{id}:
+    get:
+      operationId: getWorkspace
+      tags: [workspaces]
+      summary: Get workspace by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+    patch:
+      operationId: updateWorkspace
+      tags: [workspaces]
+      summary: Update workspace
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceUpdate"
+      responses:
+        "200":
+          description: Updated workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+
+  /workspaces/{id}/members:
+    get:
+      operationId: listWorkspaceMembers
+      tags: [workspaces]
+      summary: List workspace members
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Members list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceMember"
+    post:
+      operationId: inviteWorkspaceMember
+      tags: [workspaces]
+      summary: Invite a member to workspace
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberInviteInput"
+      responses:
+        "201":
+          description: Invite sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMember"
+
+  # ── Audits ─────────────────────────────────────────────────────────────────
+  /audits:
+    get:
+      operationId: listAudits
+      tags: [audits]
+      summary: List all audits for current workspace
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of audits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Audit"
+    post:
+      operationId: createAudit
+      tags: [audits]
+      summary: Start a new website audit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditInput"
+      responses:
+        "201":
+          description: Audit started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Audit"
+
+  /audits/{id}:
+    get:
+      operationId: getAudit
+      tags: [audits]
+      summary: Get audit by ID with full results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit with results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditDetail"
+    delete:
+      operationId: deleteAudit
+      tags: [audits]
+      summary: Delete an audit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /audits/{id}/regenerate:
+    post:
+      operationId: regenerateAuditReport
+      tags: [audits]
+      summary: Regenerate AI report for audit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRegenerateInput"
+      responses:
+        "200":
+          description: Regenerated audit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditDetail"
+
+  /audits/stats:
+    get:
+      operationId: getAuditStats
+      tags: [audits]
+      summary: Get audit statistics summary
+      responses:
+        "200":
+          description: Audit stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditStats"
+
+  # ── Leads ──────────────────────────────────────────────────────────────────
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: List all leads
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: niche
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+    post:
+      operationId: createLead
+      tags: [leads]
+      summary: Create a new lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Created lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+
+  /leads/{id}:
+    get:
+      operationId: getLead
+      tags: [leads]
+      summary: Get lead by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      summary: Update lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadUpdate"
+      responses:
+        "200":
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      summary: Delete a lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /leads/find:
+    post:
+      operationId: findLeads
+      tags: [leads]
+      summary: AI-powered lead discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadFinderInput"
+      responses:
+        "200":
+          description: Discovered leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+
+  /leads/stats:
+    get:
+      operationId: getLeadStats
+      tags: [leads]
+      summary: Get lead funnel statistics
+      responses:
+        "200":
+          description: Lead stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadStats"
+
+  # ── Proposals ──────────────────────────────────────────────────────────────
+  /proposals:
+    get:
+      operationId: listProposals
+      tags: [proposals]
+      summary: List all proposals
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of proposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+    post:
+      operationId: createProposal
+      tags: [proposals]
+      summary: Create a new proposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalInput"
+      responses:
+        "201":
+          description: Created proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+
+  /proposals/{id}:
+    get:
+      operationId: getProposal
+      tags: [proposals]
+      summary: Get proposal by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+    patch:
+      operationId: updateProposal
+      tags: [proposals]
+      summary: Update proposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalUpdate"
+      responses:
+        "200":
+          description: Updated proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+    delete:
+      operationId: deleteProposal
+      tags: [proposals]
+      summary: Delete a proposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /proposals/{id}/send:
+    post:
+      operationId: sendProposal
+      tags: [proposals]
+      summary: Send proposal to client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Proposal sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+
+  /proposals/{id}/accept:
+    post:
+      operationId: acceptProposal
+      tags: [proposals]
+      summary: Accept a proposal (client action)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Proposal accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+
+  /proposals/stats:
+    get:
+      operationId: getProposalStats
+      tags: [proposals]
+      summary: Get proposal analytics
+      responses:
+        "200":
+          description: Proposal stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalStats"
+
+  # ── Clients ────────────────────────────────────────────────────────────────
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List all clients
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create a new client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Created client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get client by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    patch:
+      operationId: updateClient
+      tags: [clients]
+      summary: Update client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    delete:
+      operationId: deleteClient
+      tags: [clients]
+      summary: Delete a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /clients/{id}/notes:
+    get:
+      operationId: listClientNotes
+      tags: [clients]
+      summary: List notes for a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientNote"
+    post:
+      operationId: createClientNote
+      tags: [clients]
+      summary: Add note to client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientNoteInput"
+      responses:
+        "201":
+          description: Note created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientNote"
+
+  /clients/{id}/activity:
+    get:
+      operationId: getClientActivity
+      tags: [clients]
+      summary: Get activity timeline for a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity timeline
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  # ── Campaigns ──────────────────────────────────────────────────────────────
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List all outreach campaigns
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create a new campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get campaign by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+    patch:
+      operationId: updateCampaign
+      tags: [campaigns]
+      summary: Update campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      summary: Delete a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /campaigns/{id}/launch:
+    post:
+      operationId: launchCampaign
+      tags: [campaigns]
+      summary: Launch an outreach campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign launched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}/emails:
+    get:
+      operationId: listCampaignEmails
+      tags: [campaigns]
+      summary: List emails in a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign emails
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignEmail"
+
+  /campaigns/generate-email:
+    post:
+      operationId: generateOutreachEmail
+      tags: [campaigns]
+      summary: AI-generate a personalized outreach email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailGenerateInput"
+      responses:
+        "200":
+          description: Generated email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedEmail"
+
+  # ── Analytics ──────────────────────────────────────────────────────────────
+  /analytics/dashboard:
+    get:
+      operationId: getDashboardAnalytics
+      tags: [analytics]
+      summary: Get main dashboard analytics summary
+      responses:
+        "200":
+          description: Dashboard analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardAnalytics"
+
+  /analytics/revenue:
+    get:
+      operationId: getRevenueAnalytics
+      tags: [analytics]
+      summary: Get revenue and MRR analytics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revenue analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueAnalytics"
+
+  /analytics/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [analytics]
+      summary: Get recent platform activity feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  # ── White-label ────────────────────────────────────────────────────────────
+  /whitelabel:
+    get:
+      operationId: getWhitelabelConfig
+      tags: [whitelabel]
+      summary: Get white-label configuration for workspace
+      responses:
+        "200":
+          description: White-label config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhitelabelConfig"
+    patch:
+      operationId: updateWhitelabelConfig
+      tags: [whitelabel]
+      summary: Update white-label configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhitelabelUpdate"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhitelabelConfig"
+
+  # ── Blog ───────────────────────────────────────────────────────────────────
+  /blog/posts:
+    get:
+      operationId: listBlogPosts
+      tags: [blog]
+      summary: List blog posts
+      parameters:
+        - name: published
+          in: query
+          schema:
+            type: boolean
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Blog posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BlogPost"
+    post:
+      operationId: createBlogPost
+      tags: [blog]
+      summary: Create a blog post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlogPostInput"
+      responses:
+        "201":
+          description: Created blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPost"
+
+  /blog/posts/{id}:
+    get:
+      operationId: getBlogPost
+      tags: [blog]
+      summary: Get blog post by ID or slug
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPost"
+    patch:
+      operationId: updateBlogPost
+      tags: [blog]
+      summary: Update blog post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlogPostUpdate"
+      responses:
+        "200":
+          description: Updated blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPost"
+    delete:
+      operationId: deleteBlogPost
+      tags: [blog]
+      summary: Delete a blog post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Billing ────────────────────────────────────────────────────────────────
+  /billing/subscription:
+    get:
+      operationId: getSubscription
+      tags: [billing]
+      summary: Get current subscription
+      responses:
+        "200":
+          description: Subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+
+  /billing/plans:
+    get:
+      operationId: listPlans
+      tags: [billing]
+      summary: List available subscription plans
+      responses:
+        "200":
+          description: Plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plan"
+
+  /billing/waitlist:
+    post:
+      operationId: joinWaitlist
+      tags: [billing]
+      summary: Join the product waitlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WaitlistInput"
+      responses:
+        "201":
+          description: Joined waitlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistEntry"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # ── User ──────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      required: [id, clerkId, email, role, onboardingCompleted, createdAt]
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        email:
+          type: string
+        name:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        role:
+          type: string
+        plan:
+          type: ["string", "null"]
+        onboardingCompleted:
+          type: boolean
+        agencyName:
+          type: ["string", "null"]
+        agencyWebsite:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        agencyName:
+          type: string
+        agencyWebsite:
+          type: string
+        avatarUrl:
+          type: string
+
+    OnboardingInput:
+      type: object
+      required: [agencyName, role]
+      properties:
+        agencyName:
+          type: string
+        role:
+          type: string
+        agencyWebsite:
+          type: string
+        teamSize:
+          type: string
+        useCase:
+          type: string
+
+    # ── Workspace ─────────────────────────────────────────────────────────────
+    Workspace:
+      type: object
+      required: [id, name, slug, ownerId, plan, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        ownerId:
+          type: integer
+        plan:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        primaryColor:
+          type: ["string", "null"]
+        customDomain:
+          type: ["string", "null"]
+        memberCount:
+          type: integer
+        auditCount:
+          type: integer
+        leadCount:
+          type: integer
+        createdAt:
+          type: string
+
+    WorkspaceInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+
+    WorkspaceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+        primaryColor:
+          type: string
+        customDomain:
+          type: string
+
+    WorkspaceMember:
+      type: object
+      required: [id, workspaceId, userId, role, status, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        userId:
+          type: ["integer", "null"]
+        email:
+          type: string
+        name:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        role:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+
+    MemberInviteInput:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+
+    # ── Audit ─────────────────────────────────────────────────────────────────
+    Audit:
+      type: object
+      required: [id, workspaceId, url, status, overallScore, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        url:
+          type: string
+        websiteName:
+          type: ["string", "null"]
+        status:
+          type: string
+        overallScore:
+          type: ["integer", "null"]
+        seoScore:
+          type: ["integer", "null"]
+        performanceScore:
+          type: ["integer", "null"]
+        accessibilityScore:
+          type: ["integer", "null"]
+        uxScore:
+          type: ["integer", "null"]
+        screenshotUrl:
+          type: ["string", "null"]
+        issueCount:
+          type: integer
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+
+    AuditDetail:
+      type: object
+      required: [id, workspaceId, url, status, overallScore, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        url:
+          type: string
+        websiteName:
+          type: ["string", "null"]
+        status:
+          type: string
+        overallScore:
+          type: ["integer", "null"]
+        seoScore:
+          type: ["integer", "null"]
+        performanceScore:
+          type: ["integer", "null"]
+        accessibilityScore:
+          type: ["integer", "null"]
+        uxScore:
+          type: ["integer", "null"]
+        conversionScore:
+          type: ["integer", "null"]
+        mobileScore:
+          type: ["integer", "null"]
+        screenshotUrl:
+          type: ["string", "null"]
+        aiSummary:
+          type: ["string", "null"]
+        aiRecommendations:
+          type: ["string", "null"]
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditIssue"
+        issueCount:
+          type: integer
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+
+    AuditIssue:
+      type: object
+      required: [id, category, severity, title, description]
+      properties:
+        id:
+          type: integer
+        auditId:
+          type: integer
+        category:
+          type: string
+        severity:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        recommendation:
+          type: ["string", "null"]
+        impact:
+          type: ["string", "null"]
+
+    AuditInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        tone:
+          type: string
+        reportStyle:
+          type: string
+
+    ReportRegenerateInput:
+      type: object
+      properties:
+        tone:
+          type: string
+        style:
+          type: string
+
+    AuditStats:
+      type: object
+      required: [total, completed, inProgress, failed, avgScore, thisMonth]
+      properties:
+        total:
+          type: integer
+        completed:
+          type: integer
+        inProgress:
+          type: integer
+        failed:
+          type: integer
+        avgScore:
+          type: number
+        thisMonth:
+          type: integer
+        scoreDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreBucket"
+
+    ScoreBucket:
+      type: object
+      required: [range, count]
+      properties:
+        range:
+          type: string
+        count:
+          type: integer
+
+    # ── Lead ──────────────────────────────────────────────────────────────────
+    Lead:
+      type: object
+      required: [id, workspaceId, businessName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        businessName:
+          type: string
+        website:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        niche:
+          type: ["string", "null"]
+        status:
+          type: string
+        auditScore:
+          type: ["integer", "null"]
+        auditId:
+          type: ["integer", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    LeadInput:
+      type: object
+      required: [businessName]
+      properties:
+        businessName:
+          type: string
+        website:
+          type: string
+        contactEmail:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        location:
+          type: string
+        niche:
+          type: string
+        notes:
+          type: string
+
+    LeadUpdate:
+      type: object
+      properties:
+        businessName:
+          type: string
+        status:
+          type: string
+        contactEmail:
+          type: string
+        contactName:
+          type: string
+        notes:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    LeadFinderInput:
+      type: object
+      required: [niche, location]
+      properties:
+        niche:
+          type: string
+        location:
+          type: string
+        count:
+          type: integer
+
+    LeadStats:
+      type: object
+      required: [total, new, contacted, qualified, converted, lost]
+      properties:
+        total:
+          type: integer
+        new:
+          type: integer
+        contacted:
+          type: integer
+        qualified:
+          type: integer
+        converted:
+          type: integer
+        lost:
+          type: integer
+        conversionRate:
+          type: number
+        byNiche:
+          type: array
+          items:
+            $ref: "#/components/schemas/NicheBucket"
+
+    NicheBucket:
+      type: object
+      required: [niche, count]
+      properties:
+        niche:
+          type: string
+        count:
+          type: integer
+
+    # ── Proposal ──────────────────────────────────────────────────────────────
+    Proposal:
+      type: object
+      required: [id, workspaceId, title, status, totalValue, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        clientId:
+          type: ["integer", "null"]
+        leadId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        status:
+          type: string
+        totalValue:
+          type: number
+        currency:
+          type: string
+        validUntil:
+          type: ["string", "null"]
+        sentAt:
+          type: ["string", "null"]
+        acceptedAt:
+          type: ["string", "null"]
+        viewCount:
+          type: integer
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalService"
+        createdAt:
+          type: string
+
+    ProposalService:
+      type: object
+      required: [id, name, price]
+      properties:
+        id:
+          type: integer
+        proposalId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        quantity:
+          type: integer
+        recurring:
+          type: boolean
+
+    ProposalInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        clientId:
+          type: integer
+        leadId:
+          type: integer
+        currency:
+          type: string
+        validUntil:
+          type: string
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalServiceInput"
+
+    ProposalServiceInput:
+      type: object
+      required: [name, price]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+        recurring:
+          type: boolean
+
+    ProposalUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        currency:
+          type: string
+        validUntil:
+          type: string
+
+    ProposalStats:
+      type: object
+      required: [total, draft, sent, accepted, declined, totalValue, acceptedValue, acceptanceRate]
+      properties:
+        total:
+          type: integer
+        draft:
+          type: integer
+        sent:
+          type: integer
+        accepted:
+          type: integer
+        declined:
+          type: integer
+        totalValue:
+          type: number
+        acceptedValue:
+          type: number
+        acceptanceRate:
+          type: number
+
+    # ── Client ────────────────────────────────────────────────────────────────
+    Client:
+      type: object
+      required: [id, workspaceId, name, status, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        status:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        totalRevenue:
+          type: number
+        activeProposals:
+          type: integer
+        completedProjects:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    ClientInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        company:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    ClientUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        company:
+          type: string
+        status:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    ClientNote:
+      type: object
+      required: [id, clientId, content, createdAt]
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: integer
+        content:
+          type: string
+        authorName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ClientNoteInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    ActivityEvent:
+      type: object
+      required: [id, type, description, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        description:
+          type: string
+        entityType:
+          type: ["string", "null"]
+        entityId:
+          type: ["integer", "null"]
+        metadata:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    # ── Campaign ──────────────────────────────────────────────────────────────
+    Campaign:
+      type: object
+      required: [id, workspaceId, name, status, type, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+        type:
+          type: string
+        subject:
+          type: ["string", "null"]
+        body:
+          type: ["string", "null"]
+        sentCount:
+          type: integer
+        openCount:
+          type: integer
+        replyCount:
+          type: integer
+        openRate:
+          type: number
+        replyRate:
+          type: number
+        scheduledAt:
+          type: ["string", "null"]
+        launchedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    CampaignInput:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        scheduledAt:
+          type: string
+
+    CampaignUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          type: string
+        scheduledAt:
+          type: string
+
+    CampaignEmail:
+      type: object
+      required: [id, campaignId, toEmail, status, createdAt]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        toEmail:
+          type: string
+        toName:
+          type: ["string", "null"]
+        subject:
+          type: string
+        status:
+          type: string
+        openedAt:
+          type: ["string", "null"]
+        repliedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    EmailGenerateInput:
+      type: object
+      required: [leadId, type]
+      properties:
+        leadId:
+          type: integer
+        type:
+          type: string
+        tone:
+          type: string
+
+    GeneratedEmail:
+      type: object
+      required: [subject, body]
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+
+    # ── Analytics ─────────────────────────────────────────────────────────────
+    DashboardAnalytics:
+      type: object
+      required: [totalLeads, totalAudits, totalProposals, totalClients, totalRevenue, activeDeals, recentActivity]
+      properties:
+        totalLeads:
+          type: integer
+        totalAudits:
+          type: integer
+        totalProposals:
+          type: integer
+        totalClients:
+          type: integer
+        totalRevenue:
+          type: number
+        activeDeals:
+          type: integer
+        proposalAcceptanceRate:
+          type: number
+        avgAuditScore:
+          type: number
+        leadsThisMonth:
+          type: integer
+        auditsThisMonth:
+          type: integer
+        revenueThisMonth:
+          type: number
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEvent"
+        topLeadNiches:
+          type: array
+          items:
+            $ref: "#/components/schemas/NicheBucket"
+
+    RevenueAnalytics:
+      type: object
+      required: [mrr, arr, totalRevenue, monthlyData]
+      properties:
+        mrr:
+          type: number
+        arr:
+          type: number
+        totalRevenue:
+          type: number
+        monthlyData:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyRevenue"
+
+    MonthlyRevenue:
+      type: object
+      required: [month, revenue, proposals]
+      properties:
+        month:
+          type: string
+        revenue:
+          type: number
+        proposals:
+          type: integer
+
+    # ── White-label ───────────────────────────────────────────────────────────
+    WhitelabelConfig:
+      type: object
+      required: [id, workspaceId, brandName, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        brandName:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        faviconUrl:
+          type: ["string", "null"]
+        primaryColor:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        fontFamily:
+          type: ["string", "null"]
+        customDomain:
+          type: ["string", "null"]
+        domainVerified:
+          type: boolean
+        hideAltBranding:
+          type: boolean
+        customEmailFrom:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    WhitelabelUpdate:
+      type: object
+      properties:
+        brandName:
+          type: string
+        logoUrl:
+          type: string
+        faviconUrl:
+          type: string
+        primaryColor:
+          type: string
+        accentColor:
+          type: string
+        fontFamily:
+          type: string
+        customDomain:
+          type: string
+        hideAltBranding:
+          type: boolean
+        customEmailFrom:
+          type: string
+
+    # ── Blog ──────────────────────────────────────────────────────────────────
+    BlogPost:
+      type: object
+      required: [id, title, slug, status, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: ["string", "null"]
+        content:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: ["string", "null"]
+        author:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        published:
+          type: boolean
+        readTime:
+          type: ["integer", "null"]
+        seoTitle:
+          type: ["string", "null"]
+        seoDescription:
+          type: ["string", "null"]
+        publishedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    BlogPostInput:
+      type: object
+      required: [title, slug]
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        coverImageUrl:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        published:
+          type: boolean
+        seoTitle:
+          type: string
+        seoDescription:
+          type: string
+
+    BlogPostUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        coverImageUrl:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        published:
+          type: boolean
+        seoTitle:
+          type: string
+        seoDescription:
+          type: string
+
+    # ── Billing ───────────────────────────────────────────────────────────────
+    Subscription:
+      type: object
+      required: [id, workspaceId, plan, status, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        plan:
+          type: string
+        status:
+          type: string
+        auditLimit:
+          type: integer
+        auditsUsed:
+          type: integer
+        leadLimit:
+          type: integer
+        leadsUsed:
+          type: integer
+        currentPeriodEnd:
+          type: ["string", "null"]
+        cancelAtPeriodEnd:
+          type: boolean
+        createdAt:
+          type: string
+
+    Plan:
+      type: object
+      required: [id, name, price, interval, features]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        interval:
+          type: string
+        auditLimit:
+          type: integer
+        leadLimit:
+          type: integer
+        features:
+          type: array
+          items:
+            type: string
+        highlighted:
+          type: boolean
+
+    WaitlistInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        company:
+          type: string
+
+    WaitlistEntry:
+      type: object
+      required: [id, email, position, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        position:
+          type: integer
+        createdAt:
+          type: string

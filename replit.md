@@ -1,45 +1,71 @@
-# [Project name]
+# ALT — Agency Automation Platform
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+ALT is an AI-powered SaaS platform that helps digital agencies automate website audits, lead finding, proposal generation, outreach campaigns, and client management from a single command center.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- Frontend: React + Vite, Tailwind CSS, shadcn/ui, Framer Motion, Recharts, wouter, Clerk
+- API: Express 5 + Clerk Express middleware
 - DB: PostgreSQL + Drizzle ORM
+- Auth: Clerk (proxy through `/api/__clerk`)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
+- API codegen: Orval (from OpenAPI spec in `lib/api-spec/openapi.yaml`)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — source-of-truth API contract (edit here, then run codegen)
+- `lib/api-zod/src/generated/api.ts` — generated Zod schemas (do not edit manually)
+- `lib/api-client-react/src/generated/api.ts` — generated React Query hooks (do not edit manually)
+- `lib/db/src/schema/` — Drizzle ORM schema definitions (one file per domain)
+- `artifacts/api-server/src/routes/` — Express route handlers (one folder per domain)
+- `artifacts/api-server/src/lib/auth.ts` — `requireAuth` middleware + workspace resolution
+- `artifacts/alt/src/pages/` — React pages (marketing/ for public, app/ for authenticated)
+- `artifacts/alt/src/components/layout/` — AppLayout sidebar shell
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Contract-first API**: OpenAPI spec → Orval codegen → Zod validators on server + React Query hooks on client. Never hand-write API types.
+- **Clerk proxy**: All Clerk requests pass through the Express server at `/api/__clerk` so auth works seamlessly on the shared Replit proxy domain. `publishableKeyFromHost` resolves the correct key per environment.
+- **Auto workspace creation**: First sign-in creates a user + default workspace + owner membership record automatically in `requireAuth`.
+- **Simulated AI processing**: Audit scoring and lead finding use deterministic simulation with `setTimeout` to demonstrate the real-time async flow without requiring external AI APIs.
+- **Schema-first DB**: All Drizzle schema changes go in `lib/db/src/schema/`, then `pnpm --filter @workspace/db run push` applies them. Run `typecheck:libs` after schema changes before typechecking leaf packages.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Website Audit Engine**: Enter any URL and get AI-generated scores (SEO, Performance, Accessibility, UX, Conversion, Mobile) + prioritized issues list + AI recommendations
+- **AI Lead Finder**: Search by niche + location to discover qualified leads with pre-audited scores
+- **Proposal Generator**: Build, send, and track proposals with service line items and value totals
+- **CRM**: Full client lifecycle management with notes, activity timeline, and linked proposals/audits
+- **Outreach Campaigns**: Create email/LinkedIn campaigns with AI-generated copy and track open/reply rates
+- **Analytics Dashboard**: MRR, proposal pipeline, lead funnel, and audit usage — all in real-time charts
+- **White-label**: Configure brand name, colors, logo, custom domain per workspace
+- **Billing**: Free/Pro/Agency/Enterprise plans with usage limits
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Dark mode as default (not a toggle)
+- Electric violet/indigo (#6366f1) as primary accent
+- No emojis in the UI
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After adding new schema files, run `pnpm run typecheck:libs` before typechecking leaf packages, or you'll get TS2305 "no exported member" errors
+- Do not call `pnpm dev` at workspace root — use `restart_workflow` instead
+- Clerk proxy path is `/api/__clerk` — defined in `clerkProxyMiddleware.ts`
+- Images are generated by design subagent and stored in `artifacts/alt/public/images/`
 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- See the `clerk-auth` skill for auth customization

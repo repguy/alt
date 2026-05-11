@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "woe97wWA5VJpazY7oN9M3"
+uri = "file://artifacts/alt/public/images/dashboard-preview.png"
+type = "image"
+title = "dashboard mockup preview"
+
+[[generated]]
+id = "xxXDJXdN7YtN3bwlv9hLj"
+uri = "file://artifacts/alt/public/images/ai-audit.png"
+type = "image"
+title = "AI audit visual"
+
+[[generated]]
+id = "6zulh4AkQoEyNMBcVbuAR"
+uri = "file://artifacts/alt/public/images/feature-pipeline.png"
+type = "image"
+title = "feature screenshot"
