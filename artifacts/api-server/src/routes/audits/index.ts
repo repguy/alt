@@ -3,7 +3,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { auditsTable, auditIssuesTable } from "@workspace/db";
 import { requireAuth, getCurrentWorkspace } from "../../lib/auth";
-import { runAuditWithAI } from "../../lib/ai";
+import { runAuditWithAI, AUDIT_STEPS, type AIProvider } from "../../lib/ai";
 
 const router = Router();
 
@@ -62,11 +62,54 @@ router.get("/audits", requireAuth, async (req, res): Promise<void> => {
   res.json(audits.map(formatAudit));
 });
 
+// ─── SSE live progress endpoint ───────────────────────────────────────────────
+router.get("/audits/:id/progress", requireAuth, async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+
+  const audit = await db.select().from(auditsTable).where(eq(auditsTable.id, id)).then(r => r[0]);
+  if (!audit) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (audit.status !== "running") {
+    // Already done — send immediate completion event
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.write(`data: ${JSON.stringify({ status: audit.status, done: true })}\n\n`);
+    res.end();
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  // Poll for completion and stream status
+  const interval = setInterval(async () => {
+    try {
+      const current = await db.select().from(auditsTable).where(eq(auditsTable.id, id)).then(r => r[0]);
+      if (!current) { clearInterval(interval); res.end(); return; }
+
+      res.write(`data: ${JSON.stringify({ status: current.status, done: current.status !== "running" })}\n\n`);
+
+      if (current.status !== "running") {
+        clearInterval(interval);
+        res.end();
+      }
+    } catch {
+      clearInterval(interval);
+      res.end();
+    }
+  }, 2000);
+
+  req.on("close", () => { clearInterval(interval); });
+});
+
 router.post("/audits", requireAuth, async (req, res): Promise<void> => {
   const workspace = await getCurrentWorkspace(req);
   if (!workspace) { res.status(404).json({ error: "No workspace" }); return; }
 
-  const { url, tone = "professional", reportStyle = "detailed" } = req.body;
+  const { url, tone = "professional", reportStyle = "detailed", provider } = req.body;
   if (!url) { res.status(400).json({ error: "URL required" }); return; }
 
   let websiteName: string | null = null;
@@ -79,55 +122,39 @@ router.post("/audits", requireAuth, async (req, res): Promise<void> => {
 
   const [audit] = await db
     .insert(auditsTable)
-    .values({
-      workspaceId: workspace.id,
-      url: normalizedUrl,
-      websiteName,
-      status: "running",
-      tone,
-      reportStyle,
-    })
+    .values({ workspaceId: workspace.id, url: normalizedUrl, websiteName, status: "running", tone, reportStyle })
     .returning();
 
-  // Run real AI audit asynchronously
+  // Run AI audit async with step callbacks
   (async () => {
     try {
-      const result = await runAuditWithAI(normalizedUrl, websiteName);
+      const result = await runAuditWithAI(
+        normalizedUrl,
+        websiteName,
+        provider as AIProvider | undefined,
+        (_step: string) => { /* steps tracked client-side via AUDIT_STEPS timing */ }
+      );
 
-      await db
-        .update(auditsTable)
-        .set({
-          overallScore: result.overallScore,
-          seoScore: result.seoScore,
-          performanceScore: result.performanceScore,
-          accessibilityScore: result.accessibilityScore,
-          uxScore: result.uxScore,
-          conversionScore: result.conversionScore,
-          mobileScore: result.mobileScore,
-          status: "completed",
-          aiSummary: result.aiSummary,
-          aiRecommendations: result.aiRecommendations,
-          completedAt: new Date(),
-        })
-        .where(eq(auditsTable.id, audit.id));
+      await db.update(auditsTable).set({
+        overallScore: result.overallScore,
+        seoScore: result.seoScore,
+        performanceScore: result.performanceScore,
+        accessibilityScore: result.accessibilityScore,
+        uxScore: result.uxScore,
+        conversionScore: result.conversionScore,
+        mobileScore: result.mobileScore,
+        status: "completed",
+        aiSummary: result.aiSummary,
+        aiRecommendations: result.aiRecommendations,
+        completedAt: new Date(),
+      }).where(eq(auditsTable.id, audit.id));
 
       for (const issue of result.issues) {
-        await db.insert(auditIssuesTable).values({
-          auditId: audit.id,
-          category: issue.category,
-          severity: issue.severity,
-          title: issue.title,
-          description: issue.description,
-          recommendation: issue.recommendation,
-          impact: issue.impact,
-        });
+        await db.insert(auditIssuesTable).values({ auditId: audit.id, ...issue });
       }
     } catch (err) {
       console.error("AI audit failed:", err);
-      await db
-        .update(auditsTable)
-        .set({ status: "failed" })
-        .where(eq(auditsTable.id, audit.id));
+      await db.update(auditsTable).set({ status: "failed" }).where(eq(auditsTable.id, audit.id));
     }
   })();
 
@@ -186,11 +213,11 @@ router.get("/audits/:id", requireAuth, async (req, res): Promise<void> => {
     performanceScore: audit.performanceScore,
     accessibilityScore: audit.accessibilityScore,
     uxScore: audit.uxScore,
-    conversionScore: audit.conversionScore,
-    mobileScore: audit.mobileScore,
+    conversionScore: (audit as any).conversionScore,
+    mobileScore: (audit as any).mobileScore,
     screenshotUrl: audit.screenshotUrl,
     aiSummary: audit.aiSummary,
-    aiRecommendations: audit.aiRecommendations,
+    aiRecommendations: (audit as any).aiRecommendations,
     issues: issues.map(i => ({
       id: i.id,
       auditId: i.auditId,
@@ -222,30 +249,25 @@ router.post("/audits/:id/regenerate", requireAuth, async (req, res): Promise<voi
   const audit = await db.select().from(auditsTable).where(eq(auditsTable.id, id)).then(r => r[0]);
   if (!audit) { res.status(404).json({ error: "Not found" }); return; }
 
-  // Mark as running
   await db.update(auditsTable).set({ status: "running" }).where(eq(auditsTable.id, id));
 
-  // Regenerate with AI async
   (async () => {
     try {
       const result = await runAuditWithAI(audit.url, audit.websiteName);
       await db.delete(auditIssuesTable).where(eq(auditIssuesTable.auditId, id));
-      await db
-        .update(auditsTable)
-        .set({
-          overallScore: result.overallScore,
-          seoScore: result.seoScore,
-          performanceScore: result.performanceScore,
-          accessibilityScore: result.accessibilityScore,
-          uxScore: result.uxScore,
-          conversionScore: result.conversionScore,
-          mobileScore: result.mobileScore,
-          status: "completed",
-          aiSummary: result.aiSummary,
-          aiRecommendations: result.aiRecommendations,
-          completedAt: new Date(),
-        })
-        .where(eq(auditsTable.id, id));
+      await db.update(auditsTable).set({
+        overallScore: result.overallScore,
+        seoScore: result.seoScore,
+        performanceScore: result.performanceScore,
+        accessibilityScore: result.accessibilityScore,
+        uxScore: result.uxScore,
+        conversionScore: result.conversionScore,
+        mobileScore: result.mobileScore,
+        status: "completed",
+        aiSummary: result.aiSummary,
+        aiRecommendations: result.aiRecommendations,
+        completedAt: new Date(),
+      }).where(eq(auditsTable.id, id));
       for (const issue of result.issues) {
         await db.insert(auditIssuesTable).values({ auditId: id, ...issue });
       }
@@ -257,26 +279,34 @@ router.post("/audits/:id/regenerate", requireAuth, async (req, res): Promise<voi
 
   const issues = await db.select().from(auditIssuesTable).where(eq(auditIssuesTable.auditId, id));
   res.json({
-    id: audit.id,
-    workspaceId: audit.workspaceId,
-    url: audit.url,
-    websiteName: audit.websiteName,
-    status: "running",
-    overallScore: audit.overallScore,
-    seoScore: audit.seoScore,
-    performanceScore: audit.performanceScore,
-    accessibilityScore: audit.accessibilityScore,
-    uxScore: audit.uxScore,
-    conversionScore: audit.conversionScore,
-    mobileScore: audit.mobileScore,
-    screenshotUrl: audit.screenshotUrl,
+    id: audit.id, workspaceId: audit.workspaceId, url: audit.url,
+    websiteName: audit.websiteName, status: "running",
+    overallScore: audit.overallScore, seoScore: audit.seoScore,
+    performanceScore: audit.performanceScore, accessibilityScore: audit.accessibilityScore,
+    uxScore: audit.uxScore, screenshotUrl: audit.screenshotUrl,
     aiSummary: audit.aiSummary,
-    aiRecommendations: audit.aiRecommendations,
     issues: issues.map(i => ({ id: i.id, auditId: i.auditId, category: i.category, severity: i.severity, title: i.title, description: i.description, recommendation: i.recommendation, impact: i.impact })),
     issueCount: issues.length,
     createdAt: audit.createdAt.toISOString(),
     completedAt: audit.completedAt ? audit.completedAt.toISOString() : null,
   });
+});
+
+// ─── AI providers list ─────────────────────────────────────────────────────────
+router.get("/ai/providers", requireAuth, async (_req, res): Promise<void> => {
+  const { listProviders, getActiveProvider } = await import("../../lib/ai");
+  res.json({ providers: listProviders(), active: getActiveProvider() });
+});
+
+router.post("/ai/providers/active", requireAuth, async (req, res): Promise<void> => {
+  const { provider } = req.body;
+  const { listProviders } = await import("../../lib/ai");
+  const valid = listProviders().map(p => p.id);
+  if (!valid.includes(provider)) {
+    res.status(400).json({ error: "Invalid provider" }); return;
+  }
+  // In production this would persist per-workspace. For now, inform client.
+  res.json({ active: provider, message: "Set AI_PROVIDER env var to persist this." });
 });
 
 export default router;
