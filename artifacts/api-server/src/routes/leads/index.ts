@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { leadsTable } from "@workspace/db";
 import { requireAuth, getCurrentWorkspace } from "../../lib/auth";
+import { generateLeadsWithAI } from "../../lib/ai";
 
 const router = Router();
 
@@ -30,8 +31,7 @@ router.get("/leads", requireAuth, async (req, res): Promise<void> => {
   const workspace = await getCurrentWorkspace(req);
   if (!workspace) { res.json([]); return; }
 
-  const { status, niche, location, limit = "50", offset = "0" } = req.query as Record<string, string>;
-
+  const { status, niche, limit = "50", offset = "0" } = req.query as Record<string, string>;
   const conditions = [eq(leadsTable.workspaceId, workspace.id)];
   if (status) conditions.push(eq(leadsTable.status, status));
   if (niche) conditions.push(eq(leadsTable.niche, niche));
@@ -65,33 +65,35 @@ router.post("/leads/find", requireAuth, async (req, res): Promise<void> => {
   if (!workspace) { res.status(404).json({ error: "No workspace" }); return; }
 
   const { niche, location, count = 5 } = req.body;
+  if (!niche || !location) { res.status(400).json({ error: "niche and location are required" }); return; }
 
-  // Simulate AI lead finding
-  const businesses = [
-    { businessName: `${location} ${niche} Solutions`, website: `${niche.toLowerCase().replace(/\s+/, "")}solutions.com`, contactEmail: `hello@${niche.toLowerCase().replace(/\s+/, "")}solutions.com`, contactName: "Sarah Johnson", auditScore: Math.floor(Math.random() * 40) + 25 },
-    { businessName: `Premier ${niche} Co`, website: `premier${niche.toLowerCase().replace(/\s+/, "")}.com`, contactEmail: `info@premier${niche.toLowerCase().replace(/\s+/, "")}.com`, contactName: "Mike Wilson", auditScore: Math.floor(Math.random() * 40) + 20 },
-    { businessName: `${location} ${niche} Experts`, website: `${location.toLowerCase()}${niche.toLowerCase().replace(/\s+/, "")}experts.com`, contactEmail: `contact@experts.com`, contactName: "Lisa Chen", auditScore: Math.floor(Math.random() * 35) + 30 },
-    { businessName: `Top ${niche} Agency`, website: `top${niche.toLowerCase().replace(/\s+/, "")}agency.com`, contactEmail: `hello@topagency.com`, contactName: "David Park", auditScore: Math.floor(Math.random() * 45) + 15 },
-    { businessName: `${niche} Pro Services`, website: `${niche.toLowerCase().replace(/\s+/, "")}proservices.io`, contactEmail: `team@proservices.io`, contactName: "Anna Martinez", auditScore: Math.floor(Math.random() * 40) + 25 },
-  ];
+  try {
+    const aiLeads = await generateLeadsWithAI(niche, location, Math.min(count, 20));
 
-  const inserted = await Promise.all(businesses.slice(0, count).map(async b => {
-    const [lead] = await db.insert(leadsTable).values({
-      workspaceId: workspace.id,
-      businessName: b.businessName,
-      website: `https://${b.website}`,
-      contactEmail: b.contactEmail,
-      contactName: b.contactName,
-      location,
-      niche,
-      status: "new",
-      auditScore: b.auditScore,
-      tags: [niche, location],
-    }).returning();
-    return formatLead(lead);
-  }));
+    const inserted = await Promise.all(
+      aiLeads.map(async (b) => {
+        const [lead] = await db.insert(leadsTable).values({
+          workspaceId: workspace.id,
+          businessName: b.businessName,
+          website: b.website ? `https://${b.website.replace(/^https?:\/\//, "")}` : null,
+          contactEmail: b.contactEmail,
+          contactName: b.contactName,
+          phone: b.phone,
+          location,
+          niche,
+          status: "new",
+          auditScore: b.auditScore,
+          tags: [niche, location],
+        }).returning();
+        return formatLead(lead);
+      })
+    );
 
-  res.json(inserted);
+    res.json(inserted);
+  } catch (err) {
+    console.error("AI lead generation failed:", err);
+    res.status(500).json({ error: "AI lead generation failed. Please try again." });
+  }
 });
 
 router.get("/leads/stats", requireAuth, async (req, res): Promise<void> => {

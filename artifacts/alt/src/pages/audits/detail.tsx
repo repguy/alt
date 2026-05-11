@@ -1,261 +1,310 @@
 import { useParams, Link } from "wouter";
 import { useGetAudit, useRegenerateAuditReport } from "@workspace/api-client-react";
 import { format } from "date-fns";
-import { 
-  ArrowLeft, 
-  ExternalLink, 
-  RefreshCw, 
-  AlertCircle, 
-  CheckCircle2, 
-  ChevronRight,
-  MonitorSmartphone,
-  Zap,
-  Accessibility,
-  LineChart
+import {
+  ArrowLeft, ExternalLink, RefreshCw, AlertCircle, CheckCircle2,
+  Zap, MonitorSmartphone, Accessibility, LineChart, Target, Gauge, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
+
+function ScoreRing({ score, label, icon: Icon, color }: { score: number | null | undefined; label: string; icon: any; color: string }) {
+  const r = 32;
+  const circ = 2 * Math.PI * r;
+  const offset = score ? circ - (score / 100) * circ : circ;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative w-20 h-20 flex items-center justify-center">
+        <svg className="transform -rotate-90 w-20 h-20 absolute inset-0">
+          <circle cx="40" cy="40" r={r} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-white/5" />
+          {score && (
+            <motion.circle
+              cx="40" cy="40" r={r} stroke="currentColor" strokeWidth="6" fill="transparent"
+              strokeDasharray={circ} strokeDashoffset={circ}
+              animate={{ strokeDashoffset: offset }}
+              transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+              className={color}
+              strokeLinecap="round"
+            />
+          )}
+        </svg>
+        <div className="absolute flex flex-col items-center">
+          <span className={`text-lg font-bold ${color}`}>{score || "—"}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+        <Icon className="w-3 h-3" />
+        {label}
+      </div>
+    </div>
+  );
+}
+
+const scoreColor = (s: number | null | undefined) =>
+  !s ? "text-muted-foreground" : s >= 75 ? "text-emerald-400" : s >= 50 ? "text-yellow-400" : "text-red-400";
 
 export default function AuditDetail() {
   const params = useParams();
   const id = Number(params.id);
-  
-  const { data: audit, isLoading } = useGetAudit(id, {
-    query: { enabled: !!id, queryKey: ['/api/audits', id] } // Fallback key format
-  });
-  
-  const regenerateReport = useRegenerateAuditReport();
+  const { data: audit, isLoading } = useGetAudit(id, { query: { enabled: !!id, refetchInterval: (q) => q.state.data?.status === "running" ? 3000 : false } });
+  const regenerate = useRegenerateAuditReport();
 
   if (isLoading) {
     return (
-      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-12 w-96 mb-8" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Skeleton className="h-64 w-full md:col-span-1" />
-          <Skeleton className="h-64 w-full md:col-span-2" />
+      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-5">
+        <Skeleton className="h-4 w-24 shimmer" />
+        <Skeleton className="h-8 w-72 shimmer" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <Skeleton className="h-64 shimmer rounded-xl" />
+          <Skeleton className="h-64 col-span-2 shimmer rounded-xl" />
         </div>
-        <Skeleton className="h-96 w-full mt-6" />
+        <Skeleton className="h-80 shimmer rounded-xl" />
       </div>
     );
   }
 
-  if (!audit) {
-    return <div className="p-8">Audit not found</div>;
-  }
+  if (!audit) return <div className="p-8 text-muted-foreground text-sm">Audit not found</div>;
 
-  const getScoreColor = (score: number | null | undefined) => {
-    if (!score) return "text-muted-foreground";
-    if (score >= 90) return "text-emerald-500";
-    if (score >= 50) return "text-yellow-500";
-    return "text-destructive";
-  };
+  const isRunning = audit.status === "running";
 
-  const ScoreRing = ({ score, label, icon: Icon }: { score: number | null | undefined, label: string, icon: any }) => {
-    const radius = 38;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = score ? circumference - (score / 100) * circumference : circumference;
-    const colorClass = score && score >= 90 ? "text-emerald-500" : score && score >= 50 ? "text-yellow-500" : score ? "text-destructive" : "text-muted";
-
-    return (
-      <div className="flex flex-col items-center gap-3">
-        <div className="relative w-24 h-24 flex items-center justify-center">
-          <svg className="transform -rotate-90 w-24 h-24 absolute inset-0">
-            <circle
-              cx="48"
-              cy="48"
-              r={radius}
-              stroke="currentColor"
-              strokeWidth="8"
-              fill="transparent"
-              className="text-muted/20"
-            />
-            {score && (
-              <circle
-                cx="48"
-                cy="48"
-                r={radius}
-                stroke="currentColor"
-                strokeWidth="8"
-                fill="transparent"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                className={`${colorClass} transition-all duration-1000 ease-out`}
-                strokeLinecap="round"
-              />
-            )}
-          </svg>
-          <div className="absolute flex flex-col items-center justify-center">
-            <span className={`text-2xl font-bold ${colorClass}`}>{score || '—'}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-          <Icon className="w-4 h-4" /> {label}
-        </div>
-      </div>
-    );
-  };
+  const categories = [
+    { score: audit.seoScore, label: "SEO", icon: LineChart, color: scoreColor(audit.seoScore) },
+    { score: audit.performanceScore, label: "Performance", icon: Zap, color: scoreColor(audit.performanceScore) },
+    { score: audit.accessibilityScore, label: "Accessibility", icon: Accessibility, color: scoreColor(audit.accessibilityScore) },
+    { score: audit.uxScore, label: "UX", icon: MonitorSmartphone, color: scoreColor(audit.uxScore) },
+    { score: (audit as any).conversionScore, label: "Conversion", icon: Target, color: scoreColor((audit as any).conversionScore) },
+    { score: (audit as any).mobileScore, label: "Mobile", icon: Gauge, color: scoreColor((audit as any).mobileScore) },
+  ];
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-      {/* Breadcrumb & Header */}
-      <div>
-        <Link href="/audits" className="inline-flex items-center text-sm text-muted-foreground hover:text-white transition-colors mb-4">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Audits
+    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-5">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+        <Link href="/audits" className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 group">
+          <ArrowLeft className="w-3.5 h-3.5 mr-1 group-hover:-translate-x-0.5 transition-transform" /> Back to Audits
         </Link>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-              {audit.websiteName || audit.url.replace(/^https?:\/\//, '')}
-              {audit.status === 'completed' && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-xs py-0.5">Completed</Badge>}
-            </h1>
-            <a href={audit.url} target="_blank" rel="noreferrer" className="text-muted-foreground mt-1 flex items-center hover:text-primary transition-colors">
-              {audit.url} <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-bold tracking-tight">
+                {audit.websiteName || audit.url.replace(/^https?:\/\//, "")}
+              </h1>
+              {isRunning ? (
+                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] flex items-center gap-1">
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" /> Analyzing...
+                </Badge>
+              ) : audit.status === "completed" ? (
+                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">Completed</Badge>
+              ) : (
+                <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px]">Failed</Badge>
+              )}
+            </div>
+            <a href={audit.url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 mt-1">
+              {audit.url} <ExternalLink className="w-3 h-3" />
             </a>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-border">
-              Download PDF
-            </Button>
-            <Button 
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => regenerateReport.mutate({ id, data: {} })}
-              disabled={regenerateReport.isPending}
-            >
-              {regenerateReport.isPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              Regenerate
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/10 hover:border-primary/40 hover:bg-primary/5 text-sm"
+            onClick={() => regenerate.mutate({ id, data: {} })}
+            disabled={regenerate.isPending || isRunning}
+          >
+            {regenerate.isPending ? (
+              <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Regenerating</>
+            ) : (
+              <><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Regenerate</>
+            )}
+          </Button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Main Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Overall Score */}
-        <Card className="bg-card/50 backdrop-blur-sm border-white/5 lg:col-span-1 flex flex-col items-center justify-center py-8">
-          <h3 className="text-lg font-medium text-muted-foreground mb-6">Overall Score</h3>
-          <div className="relative w-48 h-48 flex items-center justify-center mb-6">
-            <svg className="transform -rotate-90 w-48 h-48 absolute inset-0">
-              <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-muted/20" />
+      {isRunning && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="rounded-xl border border-blue-500/15 bg-blue-500/5 p-4 flex items-center gap-3"
+        >
+          <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-blue-300">AI is analyzing this website</p>
+            <p className="text-xs text-blue-400/70 mt-0.5">This usually takes 15-30 seconds. Results will appear automatically.</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Scores */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+      >
+        {/* Overall */}
+        <Card className="bg-card/40 backdrop-blur border-white/5 flex flex-col items-center justify-center py-8">
+          <p className="text-xs font-medium text-muted-foreground mb-5">Overall Score</p>
+          <div className="relative w-40 h-40 flex items-center justify-center mb-4">
+            <svg className="transform -rotate-90 w-40 h-40 absolute inset-0">
+              <circle cx="80" cy="80" r="68" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/5" />
               {audit.overallScore && (
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="80"
-                  stroke="currentColor"
-                  strokeWidth="12"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 80}
-                  strokeDashoffset={(2 * Math.PI * 80) - ((audit.overallScore / 100) * (2 * Math.PI * 80))}
-                  className={`${getScoreColor(audit.overallScore)} transition-all duration-1000 ease-out`}
+                <motion.circle
+                  cx="80" cy="80" r="68"
+                  stroke="currentColor" strokeWidth="10" fill="transparent"
+                  strokeDasharray={2 * Math.PI * 68}
+                  strokeDashoffset={2 * Math.PI * 68}
+                  animate={{ strokeDashoffset: (2 * Math.PI * 68) - (audit.overallScore / 100) * (2 * Math.PI * 68) }}
+                  transition={{ duration: 1.4, ease: "easeOut", delay: 0.3 }}
+                  className={scoreColor(audit.overallScore)}
                   strokeLinecap="round"
                 />
               )}
             </svg>
-            <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className={`text-6xl font-black tracking-tighter ${getScoreColor(audit.overallScore)}`}>{audit.overallScore || '—'}</span>
-              <span className="text-sm text-muted-foreground mt-1">out of 100</span>
+            <div className="absolute text-center">
+              <span className={`text-5xl font-black tracking-tighter ${scoreColor(audit.overallScore)}`}>
+                {audit.overallScore || (isRunning ? "…" : "—")}
+              </span>
+              {audit.overallScore && <p className="text-[11px] text-muted-foreground mt-0.5">out of 100</p>}
             </div>
           </div>
-          <div className="text-sm text-muted-foreground flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Audit generated {format(new Date(audit.createdAt), 'MMM d, yyyy')}
-          </div>
+          {audit.completedAt && (
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              {format(new Date(audit.completedAt), "MMM d, yyyy")}
+            </p>
+          )}
         </Card>
 
-        {/* Categories */}
-        <Card className="bg-card/50 backdrop-blur-sm border-white/5 lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Score Breakdown</CardTitle>
+        {/* Category scores */}
+        <Card className="lg:col-span-2 bg-card/40 backdrop-blur border-white/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Score Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-4">
-              <ScoreRing score={audit.seoScore} label="SEO" icon={LineChart} />
-              <ScoreRing score={audit.performanceScore} label="Performance" icon={Zap} />
-              <ScoreRing score={audit.accessibilityScore} label="Accessibility" icon={Accessibility} />
-              <ScoreRing score={audit.uxScore} label="UX / Mobile" icon={MonitorSmartphone} />
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 py-2">
+              {categories.map((cat) => (
+                <ScoreRing key={cat.label} {...cat} />
+              ))}
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
-      <Tabs defaultValue="ai-summary" className="w-full">
-        <TabsList className="bg-card/50 border-white/5 w-full justify-start border-b rounded-none px-0 pb-px mb-6">
-          <TabsTrigger value="ai-summary" className="rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary px-6">AI Executive Summary</TabsTrigger>
-          <TabsTrigger value="issues" className="rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary px-6">
-            Issues Found 
-            {audit.issueCount && <Badge className="ml-2 bg-primary/20 text-primary">{audit.issueCount}</Badge>}
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="ai-summary" className="space-y-6">
-          <Card className="bg-card/50 backdrop-blur-sm border-white/5">
-            <CardContent className="p-6 md:p-8">
-              <div className="prose prose-invert max-w-none">
-                {audit.aiSummary ? (
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{audit.aiSummary}</p>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Zap className="w-8 h-8 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-medium text-white">AI Summary Not Available</p>
-                      <p className="text-muted-foreground mt-1">Regenerate the report to generate an AI summary.</p>
+      {/* Tabs */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.2 }}>
+        <Tabs defaultValue="summary">
+          <TabsList className="bg-card/40 border border-white/5 w-auto mb-4 h-9">
+            <TabsTrigger value="summary" className="text-xs h-7 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+              AI Summary
+            </TabsTrigger>
+            <TabsTrigger value="issues" className="text-xs h-7 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+              Issues
+              {(audit.issueCount ?? 0) > 0 && (
+                <span className="ml-1.5 bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded-full">{audit.issueCount}</span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="summary">
+            <Card className="bg-card/40 backdrop-blur border-white/5">
+              <CardContent className="p-6">
+                {isRunning ? (
+                  <div className="space-y-3">
+                    {[1,2,3].map(i => <Skeleton key={i} className={`h-4 shimmer ${i === 3 ? "w-2/3" : "w-full"}`} />)}
+                    <div className="mt-4 space-y-2">
+                      {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-3.5 shimmer" />)}
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="issues">
-          <Card className="bg-card/50 backdrop-blur-sm border-white/5">
-            <CardContent className="p-0 divide-y divide-border">
-              {audit.issues?.length ? (
-                audit.issues.map((issue) => (
-                  <div key={issue.id} className="p-6 hover:bg-white/[0.02] transition-colors">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={
-                            issue.severity === 'critical' ? 'text-destructive border-destructive/30 bg-destructive/10' :
-                            issue.severity === 'high' ? 'text-orange-500 border-orange-500/30 bg-orange-500/10' :
-                            issue.severity === 'medium' ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10' :
-                            'text-emerald-500 border-emerald-500/30 bg-emerald-500/10'
-                          }>
-                            {issue.severity.toUpperCase()}
-                          </Badge>
-                          <Badge variant="secondary" className="bg-muted/30">{issue.category}</Badge>
-                        </div>
-                        <h4 className="text-lg font-medium text-white">{issue.title}</h4>
-                        <p className="text-muted-foreground text-sm max-w-3xl">{issue.description}</p>
-                      </div>
-                    </div>
-                    {issue.recommendation && (
-                      <div className="mt-4 bg-muted/20 border border-white/5 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Zap className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-medium text-white">AI Recommendation</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{issue.recommendation}</p>
+                ) : audit.aiSummary ? (
+                  <div className="prose prose-invert prose-sm max-w-none">
+                    <p className="text-sm text-muted-foreground leading-relaxed">{audit.aiSummary}</p>
+                    {(audit as any).aiRecommendations && (
+                      <div className="mt-6 pt-6 border-t border-white/5">
+                        <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-primary" /> AI Recommendations
+                        </h4>
+                        <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{(audit as any).aiRecommendations}</div>
                       </div>
                     )}
                   </div>
-                ))
-              ) : (
-                <div className="p-12 text-center">
-                  <p className="text-muted-foreground">No issues found or recorded for this audit.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                ) : (
+                  <div className="text-center py-12">
+                    <Zap className="w-8 h-8 text-primary/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">AI summary not available. Regenerate to create one.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="issues">
+            <Card className="bg-card/40 backdrop-blur border-white/5">
+              <CardContent className="p-0 divide-y divide-white/5">
+                {isRunning ? (
+                  <div className="p-6 space-y-4">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="space-y-2">
+                        <Skeleton className="h-4 w-48 shimmer" />
+                        <Skeleton className="h-3 w-full shimmer" />
+                        <Skeleton className="h-3 w-3/4 shimmer" />
+                      </div>
+                    ))}
+                  </div>
+                ) : audit.issues?.length ? (
+                  audit.issues.map((issue, i) => (
+                    <motion.div
+                      key={issue.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="p-5 hover:bg-white/[0.015] transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${
+                          issue.severity === "critical" ? "text-red-400" :
+                          issue.severity === "high" ? "text-orange-400" :
+                          issue.severity === "medium" ? "text-yellow-400" : "text-emerald-400"
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              issue.severity === "critical" ? "text-red-400 border-red-500/20 bg-red-500/8" :
+                              issue.severity === "high" ? "text-orange-400 border-orange-500/20 bg-orange-500/8" :
+                              issue.severity === "medium" ? "text-yellow-400 border-yellow-500/20 bg-yellow-500/8" :
+                              "text-emerald-400 border-emerald-500/20 bg-emerald-500/8"
+                            }`}>
+                              {issue.severity?.toUpperCase()}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground bg-white/5 border border-white/8 px-1.5 py-0.5 rounded capitalize">{issue.category}</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-foreground">{issue.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{issue.description}</p>
+                          {issue.recommendation && (
+                            <div className="mt-3 bg-primary/5 border border-primary/10 rounded-lg p-3">
+                              <p className="text-[11px] font-medium text-primary mb-0.5 flex items-center gap-1">
+                                <Zap className="w-3 h-3" /> Fix
+                              </p>
+                              <p className="text-xs text-muted-foreground">{issue.recommendation}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="p-12 text-center">
+                    <p className="text-sm text-muted-foreground">No issues recorded for this audit.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
     </div>
   );
 }
