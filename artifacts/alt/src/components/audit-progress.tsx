@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Globe, Search, Zap, Accessibility, MonitorSmartphone, Gauge, FileText, CheckCircle2, Loader2
+  Globe, Search, Zap, Eye, MonitorSmartphone, Gauge, FileText, CheckCircle2, Loader2
 } from "lucide-react";
 
 const STEPS = [
   { id: "crawl",         icon: Globe,            label: "Crawling website",          detail: "Fetching page structure and content" },
   { id: "seo",           icon: Search,           label: "Analyzing SEO",             detail: "Meta tags, keywords, structured data" },
   { id: "performance",   icon: Zap,              label: "Measuring performance",     detail: "Core Web Vitals, load times" },
-  { id: "accessibility", icon: Accessibility,    label: "Accessibility audit",       detail: "WCAG compliance, contrast, ARIA" },
+  { id: "accessibility", icon: Eye,              label: "Accessibility audit",       detail: "WCAG compliance, contrast, ARIA" },
   { id: "ux",            icon: MonitorSmartphone,label: "Reviewing UX",              detail: "Navigation, CTAs, user flows" },
   { id: "mobile",        icon: Gauge,            label: "Mobile readiness",          detail: "Responsive layout, touch targets" },
   { id: "generate",      icon: FileText,         label: "Generating AI report",      detail: "Compiling insights and recommendations" },
@@ -43,8 +43,7 @@ export function AuditProgress({ auditId, websiteName, onComplete }: AuditProgres
     }, STEP_DURATION);
 
     // SSE: poll for real completion from the API
-    const baseUrl = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-    const sse = new EventSource(`${baseUrl}/api/v1/audits/${auditId}/progress`);
+    const sse = new EventSource(`/api/audits/${auditId}/progress`);
     sseRef.current = sse;
 
     sse.onmessage = (e) => {

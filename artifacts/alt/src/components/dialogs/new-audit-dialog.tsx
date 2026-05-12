@@ -53,8 +53,11 @@ export function NewAuditDialog({ open, onOpenChange }: NewAuditDialogProps) {
     if (!name) {
       try { name = new URL(url).hostname.replace(/^www\./, ""); } catch {}
     }
+    const provider = values.provider || localStorage.getItem("ai_provider") || "openai";
+    const customModel = provider === "openrouter" ? (localStorage.getItem("ai_openrouter_model") || undefined) : undefined;
+    const customApiKey = provider === "openrouter" ? (localStorage.getItem("ai_openrouter_key") || undefined) : undefined;
     createAudit.mutate(
-      { data: { url, websiteName: name || undefined, provider: values.provider } },
+      { data: { url, websiteName: name || undefined, provider, customModel, customApiKey } },
       {
         onSuccess: (data) => {
           setRunningAuditId(data.id);

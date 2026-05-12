@@ -64,11 +64,11 @@ router.post("/leads/find", requireAuth, async (req, res): Promise<void> => {
   const workspace = await getCurrentWorkspace(req);
   if (!workspace) { res.status(404).json({ error: "No workspace" }); return; }
 
-  const { niche, location, count = 5 } = req.body;
+  const { niche, location, count = 5, provider, customModel, customApiKey } = req.body;
   if (!niche || !location) { res.status(400).json({ error: "niche and location are required" }); return; }
 
   try {
-    const aiLeads = await generateLeadsWithAI(niche, location, Math.min(count, 20));
+    const aiLeads = await generateLeadsWithAI(niche, location, Math.min(count, 20), { provider, customModel, customApiKey });
 
     const inserted = await Promise.all(
       aiLeads.map(async (b) => {

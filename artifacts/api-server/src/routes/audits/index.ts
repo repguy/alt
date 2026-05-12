@@ -3,7 +3,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { auditsTable, auditIssuesTable } from "@workspace/db";
 import { requireAuth, getCurrentWorkspace } from "../../lib/auth";
-import { runAuditWithAI, AUDIT_STEPS, type AIProvider } from "../../lib/ai";
+import { runAuditWithAI, AUDIT_STEPS, type AIProvider, type AIOptions } from "../../lib/ai";
 
 const router = Router();
 
@@ -109,7 +109,7 @@ router.post("/audits", requireAuth, async (req, res): Promise<void> => {
   const workspace = await getCurrentWorkspace(req);
   if (!workspace) { res.status(404).json({ error: "No workspace" }); return; }
 
-  const { url, tone = "professional", reportStyle = "detailed", provider } = req.body;
+  const { url, tone = "professional", reportStyle = "detailed", provider, customModel, customApiKey } = req.body;
   if (!url) { res.status(400).json({ error: "URL required" }); return; }
 
   let websiteName: string | null = null;
@@ -131,7 +131,7 @@ router.post("/audits", requireAuth, async (req, res): Promise<void> => {
       const result = await runAuditWithAI(
         normalizedUrl,
         websiteName,
-        provider as AIProvider | undefined,
+        { provider: provider as AIProvider | undefined, customModel, customApiKey },
         (_step: string) => { /* steps tracked client-side via AUDIT_STEPS timing */ }
       );
 

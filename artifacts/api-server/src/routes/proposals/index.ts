@@ -46,7 +46,9 @@ router.post("/proposals", requireAuth, async (req, res): Promise<void> => {
 
   const { title, clientId, leadId, currency = "USD", validUntil, services = [] } = req.body;
 
-  const totalValue = services.reduce((sum: number, s: any) => sum + (s.price * (s.quantity || 1)), 0);
+  const totalValue = services.length > 0
+    ? services.reduce((sum: number, s: any) => sum + (s.price * (s.quantity || 1)), 0)
+    : (req.body.totalValue ?? 0);
 
   const [proposal] = await db
     .insert(proposalsTable)
